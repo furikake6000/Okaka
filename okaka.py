@@ -25,4 +25,27 @@ def load_secret_config():
 if __name__ == '__main__':
   #コンフィグ読み込み
   load_secret_config()
-  print(_config)
+  
+  #OAuth認証
+  auth = twitter.OAuth(
+    consumer_key=_config['twitter_api_key'],
+    consumer_secret=_config['twitter_api_secret'],
+    token=_config['twitter_access_token'],
+    token_secret=_config['twitter_access_secret'])
+
+  #アクセサ作成
+  t = twitter.Twitter(auth=auth)
+  t_stream = twitter.TwitterStream(auth=auth, domain='userstream.twitter.com')
+
+  #TLに流れてくるたびに反応
+  for msg in t_stream.user():
+    if 'in_reply_to_screen_name' in msg and msg['in_reply_to_screen_name'] == _config['twitter_account']:
+      #リプライ
+      if msg['user']['id_str'] == _config['admin_id']:
+        #管理者からのリプライ
+        tweet = "@"+msg['user']['screen_name']+" "+"こんにちは、管理者さん。"
+        t.statuses.update(status=tweet, in_reply_to_status_id=msg['id_str'])
+      else:
+        #管理者以外からのリプライ
+        tweet = "@"+msg['user']['screen_name']+" "+"こんにちは、" + msg['user']['name'] + "さん。"
+        t.statuses.update(status=tweet, in_reply_to_status_id=msg['id_str'])
