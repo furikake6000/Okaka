@@ -1,6 +1,7 @@
 import twitter
 import os
 import os.path
+import spyfromf_check
 
 _config = {}
 
@@ -22,6 +23,15 @@ def load_secret_config():
         else:
           print("Can't read config [" + token[0] + "] . Be sure format is correct.")
 
+def is_reply_from_admin(msg):
+  if 'admin_id' not in _config:
+    print("Error: Admin ID has not set to config.")
+    return False
+  if 'user' in msg and 'id_str' in msg['user']:
+    return msg['user']['id_str'] == _config['admin_id']
+  else:
+    return False
+
 if __name__ == '__main__':
   #コンフィグ読み込み
   load_secret_config()
@@ -41,10 +51,20 @@ if __name__ == '__main__':
   for msg in t_stream.user():
     if 'in_reply_to_screen_name' in msg and msg['in_reply_to_screen_name'] == _config['twitter_account']:
       #リプライ
+
       if msg['user']['id_str'] == _config['admin_id']:
-        #管理者からのリプライ
-        tweet = "@"+msg['user']['screen_name']+" "+"こんにちは、管理者さん。"
-        t.statuses.update(status=tweet, in_reply_to_status_id=msg['id_str'])
+        if "F国接続テスト" in msg['text']:
+          tweet = "@"+msg['user']['screen_name']+" テスト結果です！\n"
+
+          code = spyfromf_check.check_connection()
+          tweet += "接続テスト... " + ("成功" if code==200 else "失敗") + "(" + str(code) + ")\n"
+          tweet += "ログインテスト... " + spyfromf_check.check_login()
+
+          t.statuses.update(status=tweet, in_reply_to_status_id=msg['id_str'])
+        else:
+          #管理者からのリプライ
+          tweet = "@"+msg['user']['screen_name']+" "+"こんにちは、管理者さん。"
+          t.statuses.update(status=tweet, in_reply_to_status_id=msg['id_str'])
       else:
         #管理者以外からのリプライ
         tweet = "@"+msg['user']['screen_name']+" "+"こんにちは、" + msg['user']['name'] + "さん。"
